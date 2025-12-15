@@ -8,7 +8,7 @@ import java.io.File;
 
 public class SnakesLaddersGame extends JFrame {
     private String gameState = "menu";
-    private int numPlayers = 2;
+    // private int numPlayers = 2; // Removed: No longer needed as we select specific players
     private ArrayList<Player> players;
     private PlayerQueue playerQueue;
     private Player currentPlayer;
@@ -24,6 +24,11 @@ public class SnakesLaddersGame extends JFrame {
     private GameHistoryManager historyManager;
     private JPanel historyListPanel;
     // --------------------------------------
+
+    // --- VARIABEL SELECTION ---
+    private JCheckBox[] playerCheckboxes;
+    private JPanel playerSelectionPanel;
+    // --------------------------
 
     // --- VARIABEL ANIMASI SLIDING ---
     private Player slidingPlayer = null;
@@ -42,7 +47,7 @@ public class SnakesLaddersGame extends JFrame {
     private JPanel gamePanel;
     private JLayeredPane boardContainer;
     private JPanel gridPanel;
-    private BoardDrawingPanel drawingLayer; // Error solved: Class didefinisikan di bawah
+    private BoardDrawingPanel drawingLayer;
     private JLabel currentPlayerLabel;
     private JLabel currentPlayerNameLabel;
     private JLabel currentPlayerPosLabel;
@@ -99,7 +104,7 @@ public class SnakesLaddersGame extends JFrame {
         sound.playBacksound("assets/background_music.wav");
     }
 
-    // --- INNER CLASS: BoardDrawingPanel (SOLUSI ERROR 1) ---
+    // --- INNER CLASS: BoardDrawingPanel ---
     private class BoardDrawingPanel extends JPanel {
         public BoardDrawingPanel() {
             setOpaque(false);
@@ -198,9 +203,7 @@ public class SnakesLaddersGame extends JFrame {
             }
         }
     }
-    // --------------------------------------------------------
 
-    // --- METHOD UPDATE BOARD (SOLUSI ERROR 2) ---
     private void updateBoard() {
         gridPanel.removeAll();
         int boardW = gridPanel.getWidth();
@@ -230,7 +233,7 @@ public class SnakesLaddersGame extends JFrame {
                 pionsPanel.setOpaque(false);
 
                 for (Player player : players) {
-                    if (player == slidingPlayer) continue; // Hide original pion during sliding animation
+                    if (player == slidingPlayer) continue;
 
                     if (player.getPosition() == cellNumber) {
                         JLabel pion = new JLabel(player.getName().substring(player.getName().length() - 1));
@@ -253,9 +256,6 @@ public class SnakesLaddersGame extends JFrame {
         gridPanel.repaint();
         drawingLayer.repaint();
     }
-    // --------------------------------------------
-
-    // --- LOGIKA GAME LAINNYA ---
 
     private void initializeNodePoints() {
         nodePoints.clear();
@@ -492,7 +492,6 @@ public class SnakesLaddersGame extends JFrame {
     }
 
     private void rollDice() {
-        // Logika 70% Maju, 30% Mundur
         boolean isPrimeNode = isPrime(currentPlayer.getPosition() + 1);
         int diceValue = random.nextInt(6) + 1;
         diceResult = diceValue;
@@ -504,10 +503,10 @@ public class SnakesLaddersGame extends JFrame {
         String directionText;
 
         if (isForward) {
-            dotColor = new Color(39, 174, 96); // Hijau
+            dotColor = new Color(39, 174, 96);
             directionText = "Maju: " + diceValue;
         } else {
-            dotColor = new Color(192, 57, 43); // Merah
+            dotColor = new Color(192, 57, 43);
             directionText = "Mundur: " + diceValue;
         }
 
@@ -534,23 +533,27 @@ public class SnakesLaddersGame extends JFrame {
         currentPlayer = playerQueue.peek();
     }
 
-    // --- UI SETUP & SCREENS ---
-
+    // --- LOGIKA SETUP PLAYERS YANG DIMODIFIKASI ---
     private void setupPlayers() {
         players.clear();
         playerQueue = new PlayerQueue();
         initializeLinks();
         initializeNodePoints();
 
-        for (int i = 0; i < numPlayers; i++) {
-            Player player = new Player("Player " + (i + 1), playerColors[i]);
-            players.add(player);
-            playerQueue.enqueue(player);
+        // Checkbox Logic: Loop 0-5. If checkbox[i] is selected, add Player (i+1)
+        for (int i = 0; i < 6; i++) {
+            if (playerCheckboxes[i].isSelected()) {
+                // Using playerColors[i] ensures Player 6 is always purple, Player 1 is always red, etc.
+                Player player = new Player("Player " + (i + 1), playerColors[i]);
+                players.add(player);
+                playerQueue.enqueue(player);
+            }
         }
 
         currentPlayer = playerQueue.peek();
         diceResult = null;
     }
+    // ----------------------------------------------
 
     private void updateGameScreen() {
         updateBoard();
@@ -622,12 +625,15 @@ public class SnakesLaddersGame extends JFrame {
         playButton.setFocusPainted(false);
         playButton.addActionListener(e -> {
             gameState = "setup";
+            // Refresh win counts on checkboxes before showing the screen
+            refreshPlayerSelectionUI();
             cardLayout.show(mainPanel, "setup");
         });
         menuPanel.add(playButton, gbc);
         mainPanel.add(menuPanel, "menu");
     }
 
+    // --- MODIFIED SETUP SCREEN ---
     private void initSetupScreen() {
         JPanel setupPanel = new JPanel();
         setupPanel.setLayout(new GridBagLayout());
@@ -636,26 +642,38 @@ public class SnakesLaddersGame extends JFrame {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
 
-        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
-        JLabel setupLabel = new JLabel("Setup Game");
+        gbc.gridx = 0; gbc.gridy = 0;
+        JLabel setupLabel = new JLabel("Pilih Player");
         setupLabel.setFont(new Font("Arial", Font.BOLD, 36));
         setupLabel.setForeground(Color.WHITE);
         setupPanel.add(setupLabel, gbc);
 
-        gbc.gridy = 1; gbc.gridwidth = 1;
-        JLabel playerLabel = new JLabel("Jumlah Player:");
-        playerLabel.setFont(new Font("Arial", Font.PLAIN, 20));
-        playerLabel.setForeground(Color.WHITE);
-        setupPanel.add(playerLabel, gbc);
+        gbc.gridy = 1;
+        playerSelectionPanel = new JPanel(new GridLayout(2, 3, 20, 20)); // 2 rows, 3 columns
+        playerSelectionPanel.setOpaque(false);
 
-        gbc.gridx = 1;
-        SpinnerModel spinnerModel = new SpinnerNumberModel(2, 2, 6, 1);
-        JSpinner playerSpinner = new JSpinner(spinnerModel);
-        playerSpinner.setFont(new Font("Arial", Font.PLAIN, 20));
-        ((JSpinner.DefaultEditor) playerSpinner.getEditor()).getTextField().setHorizontalAlignment(JTextField.CENTER);
-        setupPanel.add(playerSpinner, gbc);
+        playerCheckboxes = new JCheckBox[6];
+        for (int i = 0; i < 6; i++) {
+            playerCheckboxes[i] = new JCheckBox();
+            playerCheckboxes[i].setOpaque(false);
+            playerCheckboxes[i].setFont(new Font("Arial", Font.BOLD, 18));
+            // Set text color to match player color
+            playerCheckboxes[i].setForeground(Color.decode(playerColors[i]));
+            // Set background of text (won't show because opaque false, but good for safety)
+            playerCheckboxes[i].setBackground(new Color(0,0,0,0));
 
-        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+            // Check players 1 and 2 by default
+            if(i < 2) playerCheckboxes[i].setSelected(true);
+
+            playerSelectionPanel.add(playerCheckboxes[i]);
+        }
+
+        // Populate text for first run
+        refreshPlayerSelectionUI();
+
+        setupPanel.add(playerSelectionPanel, gbc);
+
+        gbc.gridy = 2;
         JButton startButton = new JButton("Start Game");
         startButton.setFont(new Font("Arial", Font.BOLD, 20));
         startButton.setPreferredSize(new Dimension(200, 50));
@@ -663,7 +681,17 @@ public class SnakesLaddersGame extends JFrame {
         startButton.setForeground(Color.WHITE);
         startButton.setFocusPainted(false);
         startButton.addActionListener(e -> {
-            numPlayers = (Integer) playerSpinner.getValue();
+            // Validate: At least 2 players must be selected
+            int selectedCount = 0;
+            for(JCheckBox cb : playerCheckboxes) {
+                if(cb.isSelected()) selectedCount++;
+            }
+
+            if (selectedCount < 2) {
+                JOptionPane.showMessageDialog(this, "Mohon pilih minimal 2 player!", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
             setupPlayers();
             gameState = "playing";
             cardLayout.show(mainPanel, "game");
@@ -672,6 +700,32 @@ public class SnakesLaddersGame extends JFrame {
         setupPanel.add(startButton, gbc);
         mainPanel.add(setupPanel, "setup");
     }
+
+    // Helper to refresh checkbox text with latest win counts
+    private void refreshPlayerSelectionUI() {
+        if(playerCheckboxes == null) return;
+
+        for (int i = 0; i < 6; i++) {
+            String name = "Player " + (i + 1);
+            int wins = historyManager.getWinCount(name);
+            playerCheckboxes[i].setText(name + " (Wins: " + wins + ")");
+            // Put a white background behind text for readability on blue bg
+            playerCheckboxes[i].setIcon(new Icon() {
+                public void paintIcon(Component c, Graphics g, int x, int y) {
+                    g.setColor(Color.WHITE);
+                    g.fillRect(x, y, 15, 15);
+                    g.setColor(Color.BLACK);
+                    if(((JCheckBox)c).isSelected()) {
+                        g.fillRect(x+3, y+3, 9, 9);
+                    }
+                    g.drawRect(x, y, 15, 15);
+                }
+                public int getIconWidth() { return 15; }
+                public int getIconHeight() { return 15; }
+            });
+        }
+    }
+    // ----------------------------
 
     private void initGameScreen() {
         gamePanel = new JPanel(new BorderLayout(20, 10));
@@ -689,7 +743,7 @@ public class SnakesLaddersGame extends JFrame {
         gridPanel.setBackground(new Color(236, 240, 241));
         gridPanel.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 3));
 
-        drawingLayer = new BoardDrawingPanel(); // Sudah didefinisikan sebagai inner class
+        drawingLayer = new BoardDrawingPanel();
         drawingLayer.setOpaque(false);
 
         boardContainer.add(gridPanel, JLayeredPane.DEFAULT_LAYER);
@@ -812,8 +866,6 @@ public class SnakesLaddersGame extends JFrame {
         debugDijkstraButton.addActionListener(e -> {
             startDijkstraAutoMove(currentPlayer);
         });
-        // Uncomment to show cheat button
-        // rollDicePanel.add(debugDijkstraButton);
 
         currentRollPlayersPanel.add(rollDicePanel);
         currentRollPlayersPanel.add(Box.createVerticalStrut(20));

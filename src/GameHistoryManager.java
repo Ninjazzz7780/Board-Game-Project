@@ -17,6 +17,11 @@ public class GameHistoryManager {
         saveData();
     }
 
+    // NEW METHOD: Get win count for a specific player to display in selection screen
+    public int getWinCount(String playerName) {
+        return winData.getOrDefault(playerName, 0);
+    }
+
     // Mengambil data yang sudah diurutkan (Terbanyak menang di atas)
     public List<Map.Entry<String, Integer>> getSortedHistory() {
         return winData.entrySet().stream()
